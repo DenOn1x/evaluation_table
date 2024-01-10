@@ -2,7 +2,9 @@
   <thead>
   <tr>
     <th></th>
-    <th v-for="category in visibleCategories" :key="category.name" :colspan="2">
+    <th v-for="(category, index) in jsonData?.header?.categories" :key="category.name"
+        :colspan="category?.isColumnVisible || index === 0 ? 2 : 2">
+
       {{ category.name }}
       <button @click="clearColumn(category)" class="clear-column">0</button>
       <button @click="hideColumn(category)" class="hide-column">-</button>
@@ -25,6 +27,10 @@ const jsonData = ref(props.jsonData);
 
 const visibleCategories = computed(() => {
   return jsonData.value?.header?.categories.filter(category => category.isColumnVisible) || [];
+});
+
+const visibleCategoriesToClear = computed(() => {
+  return jsonData.value?.header?.categories.filter(category => category.isColumnVisible).map(category => ({...category})) || [];
 });
 
 const hideColumn = (category) => {
@@ -58,25 +64,28 @@ const hideColumn = (category) => {
 
 
 const clearColumn = (category) => {
-  const categoryIndex = jsonData.value?.header?.categories.indexOf(category);
+  const categoryIndex = jsonData.value?.header?.categories.findIndex(cat => cat.name === category.name);
 
   if (categoryIndex !== undefined && categoryIndex !== -1) {
-    const startIndex = categoryIndex * 2 + 2;
+    const startIndex = categoryIndex * 2 + 1;
 
-    jsonData.value.header.categories[categoryIndex].isColumnVisible = true;
+    if (jsonData.value.header.categories[categoryIndex].isColumnVisible) {
+      jsonData.value.header.categories[categoryIndex].isColumnVisible = false;
 
-    jsonData.value.table.forEach(row => {
-      row.splice(startIndex, 2, null, null);
-    });
+      if (!jsonData.value.header.categories[categoryIndex].isColumnVisible) {
+        jsonData.value.table.forEach((row, rowIndex) => {
+          if (rowIndex) {
+            jsonData.value.table[rowIndex][startIndex] = '';
+            jsonData.value.table[rowIndex][startIndex + 1] = '';
+          }
+        });
 
-    jsonData.value.header.labels.splice(startIndex, 2, null, null);
+        jsonData.value.table[0][startIndex] = '';
+        jsonData.value.table[0][startIndex + 1] = '';
+      }
+    }
   }
-
-  jsonData.value.header.categories = [...jsonData.value.header.categories];
-  jsonData.value.header.labels = [...jsonData.value.header.labels];
-  jsonData.value.table = [...jsonData.value.table];
 };
-
 
 watch(() => props.jsonData, (newVal) => {
   jsonData.value = newVal;

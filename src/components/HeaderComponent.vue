@@ -68,24 +68,22 @@ const clearColumn = (category) => {
 
   if (categoryIndex !== undefined && categoryIndex !== -1) {
     const startIndex = categoryIndex * 2 + 1;
+    jsonData.value.header.categories[categoryIndex].clickCount = (jsonData.value.header.categories[categoryIndex].clickCount || 0) + 1;
 
-    if (jsonData.value.header.categories[categoryIndex].isColumnVisible) {
-      jsonData.value.header.categories[categoryIndex].isColumnVisible = false;
+    if (jsonData.value.header.categories[categoryIndex].clickCount >= 1) {
+      jsonData.value.table.forEach((row, rowIndex) => {
+        if (rowIndex) {
+          jsonData.value.table[rowIndex][startIndex] = '';
+          jsonData.value.table[rowIndex][startIndex + 1] = '';
+        }
+      });
 
-      if (!jsonData.value.header.categories[categoryIndex].isColumnVisible) {
-        jsonData.value.table.forEach((row, rowIndex) => {
-          if (rowIndex) {
-            jsonData.value.table[rowIndex][startIndex] = '';
-            jsonData.value.table[rowIndex][startIndex + 1] = '';
-          }
-        });
-
-        jsonData.value.table[0][startIndex] = '';
-        jsonData.value.table[0][startIndex + 1] = '';
-      }
+      jsonData.value.table[0][startIndex] = '';
+      jsonData.value.table[0][startIndex + 1] = '';
     }
   }
-};
+}
+
 
 watch(() => props.jsonData, (newVal) => {
   jsonData.value = newVal;

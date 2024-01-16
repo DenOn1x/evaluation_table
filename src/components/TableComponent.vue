@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div v-if="jsonData">
     <table>
       <HeaderComponent :jsonData="jsonData"/>
       <tbody>
@@ -43,6 +43,9 @@
     />
 
   </div>
+  <div v-else>
+    <p>Loading...</p>
+  </div>
 </template>
 
 
@@ -52,7 +55,7 @@ import ModalComponent from "./ModalComponent";
 import ModalAddRowComponent from './ModalAddRowComponent';
 
 
-import {ref, onMounted} from 'vue';
+import {ref, onMounted, watch, computed} from 'vue';
 
 
 const jsonData = ref(null);
@@ -184,6 +187,8 @@ const getColumnSumInTotalRow = (columnIndex) => {
   }
   return 0;
 };
+
+
 
 </script>
 

@@ -12,24 +12,26 @@
       </tr>
       <tr>
         <td>Суммарное количество часов</td>
-        <td>{{ jsonData.summaryTable[0]?.totalHours || '-' }}</td>
+        <td>{{ totalTime }}</td>
       </tr>
       <tr>
         <td>Итоговая цена</td>
-        <td class="total-sum">{{ totalSum || '-' }}</td>
+        <td class="total-sum">{{ totalPrice }}</td>
       </tr>
       </tbody>
     </table>
   </div>
-  <div v-else>
-    <p>Loading...</p>
-  </div>
+  <div v-else></div>
 </template>
 
 <script setup>
-import {ref, onMounted, watch} from 'vue';
+import {ref, onMounted, computed} from 'vue';
+import {useStore} from 'vuex';
+
 
 const jsonData = ref(null);
+const store = useStore();
+
 
 onMounted(() => {
   fetchData();
@@ -46,16 +48,14 @@ const fetchData = () => {
       });
 };
 
-watch(() => jsonData.value, () => {
-  updateTotalSum();
+
+const totalTime = computed(() => {
+  return store.state.totalTime;
 });
 
-const updateTotalSum = () => {
-  const totalRow = jsonData.value?.summaryTable?.find((row) => row[0] === 'Итого');
-  if (totalRow) {
-    jsonData.value.summaryTable[0].totalPrice = totalRow[1];
-  }
-};
+const totalPrice = computed(() => {
+  return store.state.totalPrice;
+});
 
 </script>
 

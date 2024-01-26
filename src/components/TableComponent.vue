@@ -6,7 +6,8 @@
       <tr v-for="(row, rowIndex) in jsonData?.table" :key="rowIndex" :class="{ 'total-row': isTotalRow(rowIndex) }">
         <template v-if="row[0] !== 'Отдельные виды работ'">
           <td>{{ row[0] }}</td>
-          <td v-for="(cell, cellIndex) in row.slice(1)" :key="cellIndex">
+          <td v-for="(cell, cellIndex) in row.slice(1)" :key="cellIndex"
+              :class="{ 'price': isTotalRow(rowIndex) && (cellIndex % 2 !== 0), 'time': isTotalRow(rowIndex) && (cellIndex % 2 === 0) }">
             <input
                 type="text"
                 :value="isTotalRow(rowIndex) ? getColumnSumInTotalRow(cellIndex + 1) : cell"
@@ -56,6 +57,7 @@ import ModalAddRowComponent from './ModalAddRowComponent';
 
 
 import {ref, onMounted, watch, computed} from 'vue';
+import {useStore} from 'vuex';
 
 
 const jsonData = ref(null);
@@ -64,6 +66,7 @@ const modalContent = ref([]);
 const selectedCellIndexes = ref([]);
 const isAddRowModalOpen = ref(false);
 const isAddRowBeforeSpecialRowModal = ref(false);
+const store = useStore();
 
 
 onMounted(() => {
@@ -77,6 +80,7 @@ onMounted(() => {
     addRowBeforeSpecialRow(event.detail);
     closeAddRowBeforeSpecialRowModal();
   });
+
 });
 
 const fetchData = () => {
@@ -148,6 +152,10 @@ const updateCellValue = (rowIndex, cellIndex, event) => {
         const updatedRow = [...row];
         updatedRow[columnIndex] = event.target.value;
         jsonData.value.table[rowIndex] = updatedRow;
+
+        updateTotalTime()
+        updateTotalPrice();
+
       } else {
         console.error('Invalid cellIndex or columnIndex is not within bounds:', cellIndex, columnIndex, row);
       }
@@ -168,6 +176,10 @@ const handleValueSelection = (value) => {
         jsonData.value.table[rowIndex][cellIndex] !== undefined
     ) {
       jsonData.value.table[rowIndex][cellIndex] = value;
+
+      updateTotalTime()
+      updateTotalPrice();
+
     } else {
       console.error('Invalid indices or jsonData.table is not properly defined.');
     }
@@ -175,7 +187,6 @@ const handleValueSelection = (value) => {
     console.error('Invalid selectedCellIndexes value:', selectedCellIndexes.value);
   }
 };
-
 
 const isTotalRow = (rowIndex) => {
   return jsonData.value?.table[rowIndex]?.[0] === 'Итого';
@@ -189,6 +200,34 @@ const getColumnSumInTotalRow = (columnIndex) => {
 };
 
 
+const updateTotalTime = () => {
+  let sum = 0;
+  if (jsonData.value && jsonData.value.table) {
+    jsonData.value.table.forEach(row => {
+      row.forEach((cell, index) => {
+        if (index % 2 !== 0 && !isNaN(parseFloat(cell))) {
+          console.log(cell, cell.value)
+          sum += parseFloat(cell);
+        }
+      });
+    });
+  }
+  store.commit('updateTotalTime', sum);
+};
+
+const updateTotalPrice = () => {
+  let sum = 0;
+  if (jsonData.value && jsonData.value.table) {
+    jsonData.value.table.forEach(row => {
+      row.forEach((cell, index) => {
+        if (index % 2 === 0 && index !== 0 && !isNaN(parseFloat(cell))) {
+          sum += parseFloat(cell);
+        }
+      });
+    });
+  }
+  store.commit('updateTotalPrice', sum);
+};
 
 </script>
 

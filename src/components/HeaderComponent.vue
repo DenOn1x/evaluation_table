@@ -6,8 +6,11 @@
         :colspan="category?.isColumnVisible || index === 0 ? 2 : 2">
 
       {{ category.name }}
-      <button @click="clearColumn(category)" class="clear-column">0</button>
-      <button @click="hideColumn(category)" class="hide-column">-</button>
+      <button @click="clearColumn(category)" class="clear-column">&#xae;</button>
+      <button @click="hideColumn(category)"
+              :class="{ 'hide-column': true, 'button-disabled': isLastHideColumn(category) }">
+        &#x2613;
+      </button>
     </th>
   </tr>
   <tr>
@@ -21,25 +24,26 @@
 
 <script setup>
 import {ref, defineProps, computed, watch} from 'vue';
+import {useStore} from 'vuex';
+
 
 const props = defineProps(['jsonData']);
 const jsonData = ref(props.jsonData);
+const store = useStore();
+
 
 const visibleCategories = computed(() => {
   return jsonData.value?.header?.categories.filter(category => category.isColumnVisible) || [];
-});
-
-const visibleCategoriesToClear = computed(() => {
-  return jsonData.value?.header?.categories.filter(category => category.isColumnVisible).map(category => ({...category})) || [];
 });
 
 const hideColumn = (category) => {
   const categoryIndex = jsonData.value?.header?.categories.indexOf(category);
 
   if (categoryIndex !== undefined && categoryIndex !== -1) {
-    const startIndex = categoryIndex + 1;
+    const startIndex = categoryIndex * 2 + 1;
+    const remainingVisibleCategories = visibleCategories.value.length - 1; // количество видимых столбцов после скрытия текущего
 
-    if (visibleCategories.value.length > 1) {
+    if (visibleCategories.value.length > 2 && remainingVisibleCategories > 1) {
       jsonData.value.header.categories[categoryIndex].isColumnVisible = !jsonData.value.header.categories[categoryIndex].isColumnVisible;
 
       if (!jsonData.value.header.categories[categoryIndex].isColumnVisible) {
@@ -53,6 +57,10 @@ const hideColumn = (category) => {
         jsonData.value.table.forEach(row => {
           row.splice(startIndex, 0);
         });
+
+        updateCells();
+        updateTotalTime();
+        updateTotalPrice();
       }
     }
   }
@@ -61,6 +69,8 @@ const hideColumn = (category) => {
   jsonData.value.header.labels = [...jsonData.value.header.labels];
   jsonData.value.table = [...jsonData.value.table];
 };
+
+const isLastHideColumn = () => visibleCategories.value.length <= 2;
 
 
 const clearColumn = (category) => {
@@ -80,10 +90,57 @@ const clearColumn = (category) => {
 
       jsonData.value.table[0][startIndex] = '';
       jsonData.value.table[0][startIndex + 1] = '';
+      updateCells();
+      updateTotalTime();
+      updateTotalPrice();
+
     }
   }
 }
 
+const updateCells = () => {
+  jsonData.value.table.forEach((row, rowIndex) => {
+    row.forEach((cell, cellIndex) => {
+      if (rowIndex > 0 && cellIndex % 2 !== 0) {
+        const columnIndex = (cellIndex - 2) / 2;
+        const dataCellIndex = columnIndex * 2 + 1;
+
+        if (!jsonData.value.table[0][dataCellIndex] === '') {
+          jsonData.value.table[rowIndex][cellIndex] = '';
+        }
+      }
+    });
+  });
+};
+
+
+const updateTotalTime = () => {
+  let sum = 0;
+  if (jsonData.value && jsonData.value.table) {
+    jsonData.value.table.forEach(row => {
+      row.forEach((cell, index) => {
+        if (index % 2 !== 0 && !isNaN(parseFloat(cell))) {
+          sum += parseFloat(cell);
+        }
+      });
+    });
+  }
+  store.commit('updateTotalTime', sum);
+};
+
+const updateTotalPrice = () => {
+  let sum = 0;
+  if (jsonData.value && jsonData.value.table) {
+    jsonData.value.table.forEach(row => {
+      row.forEach((cell, index) => {
+        if (index % 2 === 0 && index !== 0 && !isNaN(parseFloat(cell))) {
+          sum += parseFloat(cell);
+        }
+      });
+    });
+  }
+  store.commit('updateTotalPrice', sum);
+};
 
 watch(() => props.jsonData, (newVal) => {
   jsonData.value = newVal;
@@ -112,20 +169,26 @@ table th, table td {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 12px;
-  height: 12px;
+  min-width: 20px;
+  width: 20px;
+  height: 20px;
   cursor: pointer;
 }
 
 .clear-column {
   border: none;
-  background: #dc3333;
+  background: #d0ff00;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 12px;
-  height: 12px;
+  min-width: 20px;
+  width: 20px;
+  height: 20px;
   cursor: pointer;
+}
+
+.button-disabled {
+  background: #dc3333;
 }
 
 </style>

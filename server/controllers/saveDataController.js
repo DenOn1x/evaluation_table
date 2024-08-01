@@ -5,27 +5,55 @@ async function saveData(req, res) {
     try {
         const {tableData, separateWorksData} = req.body;
 
-        if (!tableData || !separateWorksData) {
-            return res.status(400).json({error: 'No data in the request body'});
+        console.log('Request body:', req.body);
+
+        if (!Array.isArray(tableData) || !Array.isArray(separateWorksData)) {
+            console.error('Invalid data format');
+            return res.status(400).json({error: 'Invalid data format'});
         }
 
-        await Promise.all(tableData.map(async (data) => {
-            await TableDataModel.create({
-                name: data.name,
-                hours: data.hours || null,
-                price: data.price || null,
-                categoryId: data.categoryId || null
-            });
-        }));
+        const tableDataCountBefore = await TableDataModel.count();
+        const separateWorksDataCountBefore = await SeparateWorksModel.count();
+        console.log('TableData count before deletion:', tableDataCountBefore);
+        console.log('SeparateWorksData count before deletion:', separateWorksDataCountBefore);
 
-        await Promise.all(separateWorksData.map(async (data) => {
-            await SeparateWorksModel.create({
-                name: data.name,
-                hours: data.hours || null,
-                price: data.price || null,
-                categoryId: data.categoryId || null
+        await TableDataModel.destroy({where: {}});
+        await SeparateWorksModel.destroy({where: {}});
+
+        const tableDataCountAfter = await TableDataModel.count();
+        const separateWorksDataCountAfter = await SeparateWorksModel.count();
+        console.log('TableData count after deletion:', tableDataCountAfter);
+        console.log('SeparateWorksData count after deletion:', separateWorksDataCountAfter);
+
+        if (tableDataCountAfter > 0 || separateWorksDataCountAfter > 0) {
+            console.error('Failed to delete existing records');
+            return res.status(500).json({error: 'Failed to delete existing records'});
+        }
+
+        for (const data of tableData) {
+            console.log('Saving tableData:', data);
+            await TableDataModel.create({
+                name: data.name || '',
+                hours: data.hours ?? null,
+                price: data.price ?? null,
+                categoryId: data.categoryId ?? null
             });
-        }));
+        }
+
+        for (const data of separateWorksData) {
+            console.log('Saving separateWorksData:', data);
+            await SeparateWorksModel.create({
+                name: data.name || '',
+                hours: data.hours ?? null,
+                price: data.price ?? null,
+                categoryId: data.categoryId ?? null
+            });
+        }
+
+        const tableDataCountFinal = await TableDataModel.count();
+        const separateWorksDataCountFinal = await SeparateWorksModel.count();
+        console.log('TableData count after insertion:', tableDataCountFinal);
+        console.log('SeparateWorksData count after insertion:', separateWorksDataCountFinal);
 
         res.status(200).json({message: 'Success'});
     } catch (error) {

@@ -6,7 +6,6 @@ async function getData(req, res) {
     try {
         const categories = await CategoryModel.findAll();
 
-        // Создание динамических заголовков
         const headerLabels = [];
         categories.forEach(category => {
             headerLabels.push("Время", "Цена");
@@ -22,7 +21,6 @@ async function getData(req, res) {
 
         const table = [];
 
-        // Функция для создания пустой строки с заголовком для категории
         const createEmptyRowWithCategory = (categoryName) => {
             const row = [categoryName];
             categories.forEach(category => {

@@ -1,4 +1,4 @@
-const {DataTypes} = require('sequelize');
+const { DataTypes } = require('sequelize');
 const db = require('../db');
 const CategoryModel = require('./CategoryModel');
 
@@ -9,11 +9,11 @@ const TableDataModel = db.define('TableData', {
     },
     hours: {
         type: DataTypes.INTEGER,
-        allowNull: true,
+        allowNull: true
     },
     price: {
         type: DataTypes.FLOAT,
-        allowNull: true,
+        allowNull: true
     },
     categoryId: {
         type: DataTypes.INTEGER,
@@ -23,9 +23,10 @@ const TableDataModel = db.define('TableData', {
             key: 'id'
         }
     }
+}, {
+    timestamps: false
 });
 
-TableDataModel.belongsTo(CategoryModel, {foreignKey: 'categoryId'});
-
+TableDataModel.belongsTo(CategoryModel, { foreignKey: 'categoryId' });
 
 module.exports = TableDataModel;

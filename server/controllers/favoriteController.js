@@ -1,4 +1,4 @@
-const FavoriteModel = require('../models/favouriteModel');
+const FavoriteModel = require('../models/favoriteModel');
 
 async function addFavorite(req, res) {
     try {
@@ -8,11 +8,7 @@ async function addFavorite(req, res) {
             return res.status(400).json({error: 'Invalid data format'});
         }
 
-        await FavoriteModel.create({
-            name,
-            header,
-            table
-        });
+        await FavoriteModel.create({name, header, table});
 
         res.status(200).json({message: 'Favorite added successfully'});
     } catch (error) {

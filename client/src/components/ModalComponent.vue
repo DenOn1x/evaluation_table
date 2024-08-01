@@ -1,121 +1,149 @@
 <template>
-  <div :class="{ 'modal': true, 'visible': isOpen }">
-    <div class="modal-wrapper">
-      <button class="modal-close" @click="closeModal">&#9587;</button>
-      <div class="modal-content">
-        <div v-if="modalContent.length === 0">
-          No data fetched
-        </div>
-        <div v-else>
-          <div class="modal-field"
-               v-for="(item, index) in toRaw(modalContent)" :key="index">
-            <div class="modal-item">{{ item?.name }}</div>
-            <div class="modal-item" @click="selectValue(item?.hour)">{{ item?.hour }}</div>
-            <div class="modal-item" @click="selectValue(item?.price)">{{ item?.price }}</div>
-          </div>
-        </div>
+  <div class="modal-overlay" v-if="isOpen">
+    <div class="modal-content">
+      <button class="close-btn" @click="closeModal">X</button>
+
+      <div class="tabs">
+        <button
+            v-for="(project, index) in projects"
+            :key="index"
+            @click="selectedProjectIndex = index"
+            :class="{ active: selectedProjectIndex === index }"
+        >
+          {{ project.name }}
+        </button>
+      </div>
+
+      <div v-if="projects[selectedProjectIndex]">
+        <table>
+          <thead>
+          <tr>
+            <th></th>
+            <th v-for="(category, index) in projects[selectedProjectIndex].header.categories" :key="category.name"
+                :colspan="category?.isColumnVisible ? 2 : 0">
+              {{ category.name }}
+            </th>
+          </tr>
+          <tr>
+            <th></th>
+            <th v-for="label in projects[selectedProjectIndex].header.labels" :key="label">
+              {{ label }}
+            </th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr v-for="(row, rowIndex) in projects[selectedProjectIndex].table" :key="rowIndex">
+            <td :colspan="isSpecialRow(row) ? projects[selectedProjectIndex].header.labels.length + 1 : 1">
+              {{ row[0] }}
+            </td>
+            <td v-if="!isSpecialRow(row)" v-for="(cell, cellIndex) in row.slice(1)" :key="cellIndex">
+              {{ cell }}
+            </td>
+          </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import {ref, onMounted, toRaw, defineProps, defineEmits} from 'vue';
+import { ref, defineProps, defineEmits, watch } from 'vue';
 
-const {isOpen} = defineProps(['isOpen']);
-const emit = defineEmits();
+const props = defineProps({
+  isOpen: Boolean,
+  projects: Array
+});
 
-const modalContent = ref([]);
+const emit = defineEmits(['closeModal']);
 
-const fetchData = async () => {
-  try {
-    const response = await fetch('./dataModal.json');
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
-    }
-    const data = await response.json();
-    modalContent.value = data.values;
-    // console.log(data.values)
-  } catch (error) {
-    console.error('Error fetching data:', error);
-  }
+const selectedProjectIndex = ref(0);
+const isSpecialRow = (row) => {
+  return row[0] === 'Отдельные виды работ';
 };
+
+watch(() => props.projects, (newProjects) => {
+  if (newProjects && newProjects.length > 0) {
+    selectedProjectIndex.value = 0;
+  }
+});
 
 const closeModal = () => {
   emit('closeModal');
 };
-
-const selectValue = (value) => {
-  emit('selectValue', value);
-  closeModal();
-};
-
-onMounted(() => {
-  fetchData();
-});
-
 </script>
 
 <style scoped>
-.modal {
-  display: none;
+.modal-overlay {
   position: fixed;
-  z-index: 2;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0);
-}
-
-.visible {
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.modal-close {
-  background: none;
+.modal-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  width: 80%;
+  position: relative;
+}
+
+.close-btn {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  z-index: 1;
+  background: #f00;
+  color: #fff;
   border: none;
-  display: block;
-  margin-left: auto;
-  margin-bottom: 12px;
+  border-radius: 50%;
+  padding: 5px 10px;
   cursor: pointer;
 }
 
-.modal-wrapper {
-  background-color: #FFF;
-  padding: 16px;
-  margin: 0 auto;
+.tabs {
+  margin-bottom: 10px;
+}
+
+.tabs button {
+  margin-right: 5px;
+  padding: 5px 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background: #f4f4f4;
+  cursor: pointer;
+}
+
+.tabs button.active {
+  background: #ddd; /* Цвет фона активной вкладки */
+  font-weight: bold; /* Жирный текст для активной вкладки */
+}
+
+table {
   width: 100%;
-  max-width: 480px;
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  box-shadow: rgba(0, 0, 0, 0.35) 0 5px 15px;
-  border-radius: 0 12px 0 0;
+  border-collapse: collapse;
 }
 
-.modal-field {
-  display: flex;
-  align-items: center;
-}
-
-.modal-field:not(:last-child) {
-  margin-bottom: 12px;
-}
-
-.modal-item {
-  flex: 0 0 33.3%;
+th, td {
+  border: 1px solid #ddd;
+  padding: 8px;
   text-align: center;
 }
 
-.modal-item:first-child {
-  pointer-events: none;
+tr td {
+  &:first-child {
+    text-align: left;
+    width: 10%;
+  }
 }
 
-.modal-item:not(:first-child) {
-  cursor: pointer;
+th {
+  background-color: #f4f4f4;
 }
-
 </style>

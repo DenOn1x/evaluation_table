@@ -1,18 +1,20 @@
 <template>
-  <div v-if="jsonData">
+  <div v-if="jsonData && jsonData.table && jsonData.table.length">
     <table class="table-body">
-      <HeaderComponent :jsonData="jsonData"/>
+      <HeaderComponent :jsonData="jsonData" />
       <tbody>
-      <tr v-for="(row, rowIndex) in jsonData?.table" :key="rowIndex" :class="{ 'total-row': isTotalRow(rowIndex) }">
+      <tr v-for="(row, rowIndex) in jsonData.table" :key="rowIndex" :class="{ 'total-row': isTotalRow(rowIndex) }">
         <template v-if="row[0] !== 'Отдельные виды работ'">
           <td>{{ row[0] }}</td>
-          <td v-for="(cell, cellIndex) in row.slice(1)" :key="cellIndex"
-              :class="{ 'price': isTotalRow(rowIndex) && (cellIndex % 2 !== 0), 'time': isTotalRow(rowIndex) && (cellIndex % 2 === 0) }">
+          <td
+              v-for="(cell, cellIndex) in row.slice(1)"
+              :key="cellIndex"
+              :class="{ 'price': isTotalRow(rowIndex) && (cellIndex % 2 !== 0), 'time': isTotalRow(rowIndex) && (cellIndex % 2 === 0) }"
+          >
             <input
                 type="text"
                 :value="isTotalRow(rowIndex) ? getColumnSumInTotalRow(cellIndex + 1) : cell"
                 @input="updateCellValue(rowIndex, cellIndex + 1, $event)"
-                @click="openModal(cell, rowIndex, cellIndex + 1)"
             />
           </td>
         </template>
@@ -24,11 +26,7 @@
       </tbody>
     </table>
     <button @click="openAddRowModal" class="add-row">+</button>
-    <ModalComponent
-        :modalContent="modalContent"
-        :isOpen="isModalOpen"
-        @closeModal="closeModal"
-        @selectValue="handleValueSelection"/>
+
     <ModalAddRowComponent
         :isOpen="isAddRowModalOpen"
         @addRow="addRow"
@@ -42,170 +40,69 @@
         modal-header-text="Введите название страницы"
         buttonText="Добавить поле"
     />
-
   </div>
   <div v-else>
-    <p>Loading...</p>
+    <p>Загрузите таблицу</p>
   </div>
 </template>
 
-
 <script setup>
+import { ref, watch } from 'vue';
+import { useStore } from 'vuex';
 import HeaderComponent from './HeaderComponent';
-import ModalComponent from "./ModalComponent";
 import ModalAddRowComponent from './ModalAddRowComponent';
 
+const props = defineProps({
+  jsonData: Object
+});
 
-import {ref, onMounted, watch, computed} from 'vue';
-import {useStore} from 'vuex';
-
-
-const jsonData = ref(null);
-const isModalOpen = ref(false);
-const modalContent = ref([]);
-const selectedCellIndexes = ref([]);
 const isAddRowModalOpen = ref(false);
 const isAddRowBeforeSpecialRowModal = ref(false);
 const store = useStore();
 
-
-onMounted(() => {
-  fetchData();
-
-  window.addEventListener('addRow', (event) => {
-    addRow(event.detail);
-    closeAddRowModal();
-  });
-  window.addEventListener('addRowBeforeSpecialRow', (event) => {
-    addRowBeforeSpecialRow(event.detail);
-    closeAddRowBeforeSpecialRowModal();
-  });
-
-});
-
-const fetchData = () => {
-  fetch('http://localhost:8000/data')
-      .then((response) => response.json())
-      .then((data) => {
-        jsonData.value = data;
-        console.log(jsonData.value)
-      })
-      .catch((error) => {
-        console.error('Error fetching data:', error);
-      });
-};
-
-const openModal = (rowData, rowIndex, cellIndex) => {
-  selectedCellIndexes.value = [rowIndex, cellIndex];
-  isModalOpen.value = true;
-  modalContent.value = [rowData];
-};
-
-
-const closeModal = () => {
-  isModalOpen.value = false;
-  modalContent.value = [];
-};
-
-
-const openAddRowModal = () => {
-  isAddRowModalOpen.value = true;
-};
-
-const closeAddRowModal = () => {
-  isAddRowModalOpen.value = false;
-};
-
-
-const addRow = (newRowName) => {
-  if (jsonData.value && jsonData.value.table) {
-    const newRow = [newRowName, ...Array(jsonData.value.table[0].length - 1).fill('')];
-    jsonData.value.table.push(newRow);
+const resetTotalRow = () => {
+  if (props.jsonData && props.jsonData.table) {
+    props.jsonData.table.forEach((row, rowIndex) => {
+      if (isTotalRow(rowIndex)) {
+        row.forEach((cell, cellIndex) => {
+          if (cellIndex !== 0) {
+            row[cellIndex] = '';
+          }
+        });
+      }
+    });
   }
-};
-
-
-const addRowBeforeSpecialRow = (newRowName) => {
-  if (jsonData.value && jsonData.value.table) {
-    const specialRowIndex = jsonData.value.table.findIndex(row => row[0] === 'Отдельные виды работ');
-    if (specialRowIndex !== -1) {
-      const newRow = [newRowName, ...Array(jsonData.value.table[0].length - 1).fill('')];
-      jsonData.value.table.splice(specialRowIndex, 0, newRow);
-    }
-  }
-};
-
-const openAddRowBeforeSpecialRowModal = () => {
-  isAddRowBeforeSpecialRowModal.value = true;
-};
-
-const closeAddRowBeforeSpecialRowModal = () => {
-  isAddRowBeforeSpecialRowModal.value = false;
 };
 
 const updateCellValue = (rowIndex, cellIndex, event) => {
-  if (jsonData.value && jsonData.value.table) {
-    const row = jsonData.value.table[rowIndex];
-    if (row) {
-      const columnIndex = cellIndex;
-      if (columnIndex >= 0 && columnIndex < row.length) {
-        const updatedRow = [...row];
-        updatedRow[columnIndex] = event.target.value;
-        jsonData.value.table[rowIndex] = updatedRow;
+  if (props.jsonData && props.jsonData.table && props.jsonData.table[rowIndex]) {
+    const row = props.jsonData.table[rowIndex];
+    const updatedRow = [...row];
+    updatedRow[cellIndex] = event.target.value;
+    props.jsonData.table[rowIndex] = updatedRow;
 
-        updateTotalTime()
-        updateTotalPrice();
-
-      } else {
-        console.error('Invalid cellIndex or columnIndex is not within bounds:', cellIndex, columnIndex, row);
-      }
-    } else {
-      console.error('Invalid row is not properly defined:', row);
-    }
-  } else {
-    console.error('jsonData.table or row is not properly defined.');
-  }
-};
-
-const handleValueSelection = (value) => {
-  if (jsonData.value && selectedCellIndexes.value.length === 2) {
-    const [rowIndex, cellIndex] = selectedCellIndexes.value;
-    if (
-        jsonData.value.table &&
-        jsonData.value.table[rowIndex] &&
-        jsonData.value.table[rowIndex][cellIndex] !== undefined
-    ) {
-      jsonData.value.table[rowIndex][cellIndex] = value;
-
-      updateTotalTime()
-      updateTotalPrice();
-
-    } else {
-      console.error('Invalid indices or jsonData.table is not properly defined.');
-    }
-  } else {
-    console.error('Invalid selectedCellIndexes value:', selectedCellIndexes.value);
+    updateTotalTime();
+    updateTotalPrice();
   }
 };
 
 const isTotalRow = (rowIndex) => {
-  return jsonData.value?.table[rowIndex]?.[0] === 'Итого';
+  return props.jsonData?.table[rowIndex]?.[0] === 'Итого';
 };
 
 const getColumnSumInTotalRow = (columnIndex) => {
-  if (jsonData.value && jsonData.value.table) {
-    return jsonData.value.table.reduce((sum, row) => sum + parseFloat(row[columnIndex] || 0), 0);
+  if (props.jsonData && props.jsonData.table) {
+    return props.jsonData.table.reduce((sum, row) => sum + parseFloat(row[columnIndex] || 0), 0);
   }
   return 0;
 };
 
 const updateTotalTime = () => {
   let sum = 0;
-  if (jsonData.value && jsonData.value.table) {
-    jsonData.value.table.forEach(row => {
+  if (props.jsonData && props.jsonData.table) {
+    props.jsonData.table.forEach(row => {
       row.forEach((cell, index) => {
         if (index % 2 !== 0 && !isNaN(parseFloat(cell))) {
-          // console.log(cell, cell.value)
           sum += parseFloat(cell);
         }
       });
@@ -216,8 +113,8 @@ const updateTotalTime = () => {
 
 const updateTotalPrice = () => {
   let sum = 0;
-  if (jsonData.value && jsonData.value.table) {
-    jsonData.value.table.forEach(row => {
+  if (props.jsonData && props.jsonData.table) {
+    props.jsonData.table.forEach(row => {
       row.forEach((cell, index) => {
         if (index % 2 === 0 && index !== 0 && !isNaN(parseFloat(cell))) {
           sum += parseFloat(cell);
@@ -228,6 +125,54 @@ const updateTotalPrice = () => {
   store.commit('updateTotalPrice', sum);
 };
 
+const addRow = (newRowName) => {
+  if (props.jsonData && props.jsonData.table) {
+    const newRow = [newRowName, ...Array(props.jsonData.table[0].length - 1).fill('')];
+    props.jsonData.table.push(newRow);
+  }
+};
+
+const addRowBeforeSpecialRow = (newRowName) => {
+  if (props.jsonData && props.jsonData.table) {
+    const specialRowIndex = props.jsonData.table.findIndex(row => row[0] === 'Отдельные виды работ');
+    if (specialRowIndex !== -1) {
+      const newRow = [newRowName, ...Array(props.jsonData.table[0].length - 1).fill('')];
+      props.jsonData.table.splice(specialRowIndex, 0, newRow);
+    }
+  }
+};
+
+const openAddRowModal = () => {
+  isAddRowModalOpen.value = true;
+};
+
+const closeAddRowModal = () => {
+  isAddRowModalOpen.value = false;
+};
+
+const openAddRowBeforeSpecialRowModal = () => {
+  isAddRowBeforeSpecialRowModal.value = true;
+};
+
+const closeAddRowBeforeSpecialRowModal = () => {
+  isAddRowBeforeSpecialRowModal.value = false;
+};
+
+watch(() => props.jsonData, (newValue) => {
+  console.log('jsonData updated:', newValue);
+  resetTotalRow();
+  updateTotalTime();
+  updateTotalPrice();
+});
+
+window.addEventListener('addRow', (event) => {
+  addRow(event.detail);
+  closeAddRowModal();
+});
+window.addEventListener('addRowBeforeSpecialRow', (event) => {
+  addRowBeforeSpecialRow(event.detail);
+  closeAddRowBeforeSpecialRowModal();
+});
 </script>
 
 <style scoped>
@@ -284,11 +229,9 @@ input {
   cursor: pointer;
   opacity: 0;
   margin-top: -10px;
-
 }
 
 .add-row:hover {
   opacity: 1;
 }
-
 </style>

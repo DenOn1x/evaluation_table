@@ -1,91 +1,92 @@
 <template>
   <div class="control-buttons">
     <div class="control-buttons__table">
-      <button class="btn save-btn" @click="saveTable">Сохранить таблицу</button>
-      <button class="btn load-btn" @click="loadTable">Загрузить таблицу</button>
+      <button class="btn load-btn" @click="emitLoadTable">Загрузить таблицу</button>
+      <button class="btn save-btn" @click="emitSaveTable">Сохранить таблицу</button>
+      <button class="btn favorite-btn" @click="emitAddToFavorites">Добавить в избранное</button>
+      <button class="btn export-btn" @click="emitFetchAllProjects">Все проекты</button>
     </div>
-    <button class="btn pdf-btn" @click="generatePDF">Сгенерировать PDF</button>
+    <div class="control-buttons__table">
+      <button class="btn pdf-btn" @click="generatePDF">Сгенерировать PDF</button>
+      <button class="btn excel-btn" @click="exportToExcel">Экспорт в Excel</button>
+    </div>
   </div>
 </template>
 
 <script setup>
-import {onMounted, ref} from 'vue';
-import jsPDF from 'jspdf';
+import {defineEmits, nextTick} from 'vue';
 import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import * as XLSX from 'xlsx';
 
-const jsonData = ref(null);
+const emit = defineEmits(['saveTable', 'loadTable', 'openExportModal', 'fetchAllProjects', 'addToFavorites']);
 
-const fetchData = async () => {
-  try {
-    const response = await fetch('http://localhost:8080/data');
-    if (!response.ok) {
-      throw new Error('Failed to fetch data from server');
-    }
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error fetching data:', error);
-    return null;
-  }
+const emitSaveTable = () => {
+  emit('saveTable');
 };
 
-const saveDataToServer = async (tableData) => {
-  try {
-    console.log('Data to be sent to server:', tableData);
-    const response = await fetch('http://localhost:8080/data/save', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({table: tableData})
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to save data on the server');
-    }
-
-    const responseData = await response.json();
-    console.log('Data saved successfully:', responseData);
-  } catch (error) {
-    console.error('Error while sending data to server:', error.message);
-  }
-};
-
-onMounted(async () => {
-  jsonData.value = await fetchData();
-});
-
-const saveTable = async () => {
-  if (jsonData.value) {
-    await saveDataToServer(jsonData.value);
-  } else {
-    console.error('No data to save');
-  }
-};
-
-const loadTable = () => {
+const emitLoadTable = () => {
+  emit('loadTable');
 };
 
 const generatePDF = () => {
   const element = document.querySelector('.grade-table');
-
-  html2canvas(element, {scale: 5}).then((canvas) => {
-    const imgData = canvas.toDataURL('image/JPEG');
-    const pdf = new jsPDF('l', 'mm', 'a4');
-    const width = pdf.internal.pageSize.getWidth();
-    const height = pdf.internal.pageSize.getHeight();
-
-    pdf.addImage(imgData, 'JPEG', 0, 0, width, height);
-    pdf.save('grade-table.pdf');
-  });
+  if (element) {
+    html2canvas(element, {scale: 5}).then((canvas) => {
+      const imgData = canvas.toDataURL('image/JPEG');
+      const pdf = new jsPDF('l', 'mm', 'a4');
+      const width = pdf.internal.pageSize.getWidth();
+      const height = pdf.internal.pageSize.getHeight();
+      pdf.addImage(imgData, 'JPEG', 0, 0, width, height);
+      pdf.save('grade-table.pdf');
+    });
+  } else {
+    console.error('Table element not found for PDF generation.');
+  }
 };
+
+const exportToExcel = async () => {
+  await nextTick();
+  const table = document.querySelector('.table-body');
+  if (table) {
+    const headers = Array.from(table.querySelectorAll('thead tr')).map(row =>
+        Array.from(row.querySelectorAll('th')).map(th => th.innerText)
+    ).flat();
+
+    const rows = Array.from(table.querySelectorAll('tbody tr')).map(row =>
+        Array.from(row.querySelectorAll('td')).map(td => {
+          const input = td.querySelector('input');
+          return input ? input.value : td.innerText;
+        })
+    );
+
+    const data = [headers, ...rows];
+
+    const worksheet = XLSX.utils.aoa_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+    XLSX.writeFile(workbook, 'table-data.xlsx');
+  } else {
+    console.error('Table element not found for Excel export.');
+  }
+};
+
+const emitFetchAllProjects = () => {
+  emit('fetchAllProjects');
+};
+
+const emitAddToFavorites = () => {
+  emit('addToFavorites');
+};
+
 </script>
 
 <style scoped>
 .control-buttons {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  justify-content: space-between;
+  gap: 40px;
   margin: 24px 0;
 }
 
@@ -93,10 +94,12 @@ const generatePDF = () => {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  width: 100%;
 }
 
 .btn {
-  width: 280px;
+  width: 100%;
+  max-width: 280px;
   height: 40px;
   display: flex;
   align-items: center;

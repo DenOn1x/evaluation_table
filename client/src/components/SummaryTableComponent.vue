@@ -12,7 +12,7 @@
       </tr>
       <tr>
         <td>Суммарное количество часов</td>
-        <td>{{ totalTime }}</td>
+        <td class="total-time">{{ totalTime }}</td>
       </tr>
       <tr>
         <td>Итоговая цена</td>
@@ -25,17 +25,11 @@
 </template>
 
 <script setup>
-import {ref, onMounted, computed} from 'vue';
+import {computed, onMounted, ref} from 'vue';
 import {useStore} from 'vuex';
-
 
 const jsonData = ref(null);
 const store = useStore();
-
-
-onMounted(() => {
-  fetchData();
-});
 
 const fetchData = () => {
   fetch('./dataResult.json')
@@ -48,15 +42,12 @@ const fetchData = () => {
       });
 };
 
-
-const totalTime = computed(() => {
-  return store.state.totalTime;
+onMounted(() => {
+  fetchData();
 });
 
-const totalPrice = computed(() => {
-  return store.state.totalPrice;
-});
-
+const totalTime = computed(() => store.state.totalTime);
+const totalPrice = computed(() => store.state.totalPrice);
 </script>
 
 <style scoped>
@@ -91,4 +82,8 @@ input {
   color: #b5b5ff;
 }
 
+.total-time,
+.total-sum {
+  font-weight: bold;
+}
 </style>
